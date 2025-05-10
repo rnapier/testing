@@ -2,235 +2,230 @@ import Testing
 import Foundation
 @testable import Keychain
 
-// MARK: - Test Helpers
-
 @Suite class KeychainTests {
-  let keychain = Keychain(keychainID: "test.keychain.\(UUID())")
+  var keychain: Keychain { .current }
 
-  func tearDown() async throws {
-    try await keychain.reset()
-  }
-
-  func withCleanup(perform: () async throws -> Void) async throws {
-    do {
-      try await perform()
-    } catch {
-      try await tearDown()
-      throw error
-    }
-    try await tearDown()
-  }
-
-  @Test
+  @Test(.withKeychain)
   func testStringStorageAndRetrieval() async throws {
-    try await withCleanup {
-      let key = "testString"
-      let value = "Hello, Keychain!"
+    let key = "testString"
+    let value = "Hello, Keychain!"
 
-      // Store the value
-      try await keychain.set(string: value, for: key)
+    // Store the value
+    try await keychain.set(string: value, for: key)
 
-      // Retrieve the value
-      let retrieved = try await keychain.string(for: key)
+    // Retrieve the value
+    let retrieved = try await keychain.string(for: key)
 
-      // Verify
-      #expect(retrieved == value)
-    }
+    // Verify
+    #expect(retrieved == value)
   }
 
-  @Test
+  @Test(.withKeychain)
   func testStringMethodStorageAndRetrieval() async throws {
-    try await withCleanup {
-      let key = "testStringMethod"
-      let value = "Hello, Keychain Method!"
+    let key = "testStringMethod"
+    let value = "Hello, Keychain Method!"
 
-      // Store the value using method
-      try await keychain.set(string: value, for: key)
+    // Store the value using method
+    try await keychain.set(string: value, for: key)
 
-      // Retrieve the value using method
-      let retrieved = try await keychain.string(for: key)
+    // Retrieve the value using method
+    let retrieved = try await keychain.string(for: key)
 
-      // Verify
-      #expect(retrieved == value)
-    }
+    // Verify
+    #expect(retrieved == value)
   }
 
-  @Test
+  @Test(.withKeychain)
   func testDataStorageAndRetrieval() async throws {
-    try await withCleanup {
-      let key = "testData"
-      let value = Data("Binary Data".utf8)
+    let key = "testData"
+    let value = Data("Binary Data".utf8)
 
-      // Store the value
-      try await keychain.set(data: value, for: key)
+    // Store the value
+    try await keychain.set(data: value, for: key)
 
-      // Retrieve the value
-      let retrieved = try await keychain.data(for: key)
+    // Retrieve the value
+    let retrieved = try await keychain.data(for: key)
 
-      // Verify
-      #expect(retrieved == value)
-    }
+    // Verify
+    #expect(retrieved == value)
   }
 
-  @Test
+  @Test(.withKeychain)
   func testDataMethodStorageAndRetrieval() async throws {
-    try await withCleanup {
-      let key = "testDataMethod"
-      let value = Data("Binary Data Method".utf8)
+    let key = "testDataMethod"
+    let value = Data("Binary Data Method".utf8)
 
-      // Store the value using method
-      try await keychain.set(data: value, for: key)
+    // Store the value using method
+    try await keychain.set(data: value, for: key)
 
-      // Retrieve the value using method
-      let retrieved = try await keychain.data(for: key)
+    // Retrieve the value using method
+    let retrieved = try await keychain.data(for: key)
 
-      // Verify
-      #expect(retrieved == value)
-    }
+    // Verify
+    #expect(retrieved == value)
   }
 
-  @Test
+  @Test(.withKeychain)
   func testBoolStorageAndRetrieval() async throws {
-    try await withCleanup {
-      let key = "testBool"
-      let value = true
+    let key = "testBool"
+    let value = true
 
-      // Store the value
-      try await keychain.set(bool: value, for: key)
+    // Store the value
+    try await keychain.set(bool: value, for: key)
 
-      // Retrieve the value
-      let retrieved = try await keychain.bool(for: key)
+    // Retrieve the value
+    let retrieved = try await keychain.bool(for: key)
 
-      // Verify
-      #expect(retrieved == value)
-    }
+    // Verify
+    #expect(retrieved == value)
   }
 
-  @Test
+  @Test(.withKeychain)
   func testBoolMethodStorageAndRetrieval() async throws {
-    try await withCleanup {
-      let key = "testBoolMethod"
-      let value = true
+    let key = "testBoolMethod"
+    let value = true
 
-      // Store the value using method
-      try await keychain.set(bool: value, for: key)
+    // Store the value using method
+    try await keychain.set(bool: value, for: key)
 
-      // Retrieve the value using method
-      let retrieved = try await keychain.bool(for: key)
+    // Retrieve the value using method
+    let retrieved = try await keychain.bool(for: key)
 
-      // Verify
-      #expect(retrieved == value)
-    }
+    // Verify
+    #expect(retrieved == value)
   }
 
-  @Test
+  @Test(.withKeychain)
   func testOverwritingValues() async throws {
-    try await withCleanup {
-      let key = "testOverwrite"
+    let key = "testOverwrite"
 
-      // Store initial value
-      try await keychain.set(string: "Initial Value", for: key)
+    // Store initial value
+    try await keychain.set(string: "Initial Value", for: key)
 
-      // Overwrite with new value
-      try await keychain.set(string: "New Value", for: key)
+    // Overwrite with new value
+    try await keychain.set(string: "New Value", for: key)
 
-      // Retrieve the value
-      let retrieved = try await keychain.string(for: key)
+    // Retrieve the value
+    let retrieved = try await keychain.string(for: key)
 
-      // Verify
-      #expect(retrieved == "New Value")
-    }
+    // Verify
+    #expect(retrieved == "New Value")
   }
 
-  @Test
+  @Test(.withKeychain)
   func testDeletingValues() async throws {
-    try await withCleanup {
-      let key = "testDelete"
+    let key = "testDelete"
 
-      // Store a value
-      try await keychain.set(string: "Value to Delete", for: key)
+    // Store a value
+    try await keychain.set(string: "Value to Delete", for: key)
 
-      // Verify it was stored
-      #expect(try await keychain.string(for: key) != nil)
+    // Verify it was stored
+    #expect(try await keychain.string(for: key) != nil)
 
-      // Delete by setting nil
-      try await keychain.set(string: nil, for: key)
+    // Delete by setting nil
+    try await keychain.set(string: nil, for: key)
 
-      // Verify it was deleted
-      #expect(try await keychain.string(for: key) == nil)
-    }
+    // Verify it was deleted
+    #expect(try await keychain.string(for: key) == nil)
   }
 
-  @Test
+  @Test(.withKeychain)
   func testDeletingDataValues() async throws {
-    try await withCleanup {
-      let key = "testDeleteData"
+    let key = "testDeleteData"
 
-      // Store a value
-      try await keychain.set(data: Data("Data to Delete".utf8), for: key)
+    // Store a value
+    try await keychain.set(data: Data("Data to Delete".utf8), for: key)
 
-      // Verify it was stored
-      #expect(try await keychain.data(for: key) != nil)
+    // Verify it was stored
+    #expect(try await keychain.data(for: key) != nil)
 
-      // Delete by setting nil
-      try await keychain.set(data: nil, for: key)
+    // Delete by setting nil
+    try await keychain.set(data: nil, for: key)
 
-      // Verify it was deleted
-      #expect(try await keychain.data(for: key) == nil)
-    }
+    // Verify it was deleted
+    #expect(try await keychain.data(for: key) == nil)
   }
 
   // MARK: - Reset Functionality Tests
 
-  @Test
+  @Test(.withKeychain)
   func testReset() async throws {
-    try await withCleanup {
-      let key = "testKey"
+    let key = "testKey"
 
-      // Store a value
-      try await keychain.set(string: "Test Value", for: key)
+    // Store a value
+    try await keychain.set(string: "Test Value", for: key)
 
-      // Verify it was stored
-      #expect(try await keychain.string(for: key) == "Test Value")
+    // Verify it was stored
+    #expect(try await keychain.string(for: key) == "Test Value")
 
-      // Reset the keychain
+    // Reset the keychain
+    try await keychain.reset()
+
+    // Verify the key was deleted
+    #expect(try await keychain.string(for: key) == nil)
+  }
+
+  @Test(.withKeychain)
+  func testMultipleDataTypes() async throws {
+    // Store different data types
+    try await keychain.set(string: "String Value", for: "stringKey")
+    try await keychain.set(bool: true, for: "boolKey")
+    try await keychain.set(data: Data("Data Value".utf8), for: "dataKey")
+
+    // Verify all values were stored correctly
+    #expect(try await keychain.string(for: "stringKey") == "String Value")
+    #expect(try await keychain.bool(for: "boolKey") == true)
+    #expect(try await keychain.data(for: "dataKey") == Data("Data Value".utf8))
+  }
+
+  @Test(.withKeychain)
+  func testCacheConsistency() async throws {
+    let key = "cacheTest"
+
+    // Store a value
+    try await keychain.set(string: "Cached Value", for: key)
+
+    // Read it multiple times to ensure cache consistency
+    let firstRead = try await keychain.string(for: key)
+    let secondRead = try await keychain.string(for: key)
+
+    // Verify both reads return the same value
+    #expect(firstRead == secondRead)
+    #expect(firstRead == "Cached Value")
+  }
+}
+
+extension Keychain {
+  @TaskLocal static var current: Keychain!
+}
+
+struct KeychainTrait: TestTrait, TestScoping {
+  var isRecursive: Bool { true }
+
+  func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
+
+    let keychain = Keychain(keychainID: "test.keychain.\(UUID())")
+
+    try await Keychain.$current.withValue(keychain) {
+
+      var error: Error? = nil
+      do {
+        try await function()
+      } catch let e {
+        error = e
+      }
+
       try await keychain.reset()
 
-      // Verify the key was deleted
-      #expect(try await keychain.string(for: key) == nil)
+      if let error {
+        throw error
+      }
     }
   }
+}
 
-  @Test
-  func testMultipleDataTypes() async throws {
-    try await withCleanup {
-      // Store different data types
-      try await keychain.set(string: "String Value", for: "stringKey")
-      try await keychain.set(bool: true, for: "boolKey")
-      try await keychain.set(data: Data("Data Value".utf8), for: "dataKey")
-
-      // Verify all values were stored correctly
-      #expect(try await keychain.string(for: "stringKey") == "String Value")
-      #expect(try await keychain.bool(for: "boolKey") == true)
-      #expect(try await keychain.data(for: "dataKey") == Data("Data Value".utf8))
-    }
-  }
-
-  @Test
-  func testCacheConsistency() async throws {
-    try await withCleanup {
-      let key = "cacheTest"
-
-      // Store a value
-      try await keychain.set(string: "Cached Value", for: key)
-
-      // Read it multiple times to ensure cache consistency
-      let firstRead = try await keychain.string(for: key)
-      let secondRead = try await keychain.string(for: key)
-
-      // Verify both reads return the same value
-      #expect(firstRead == secondRead)
-      #expect(firstRead == "Cached Value")
-    }
+extension Trait where Self == KeychainTrait {
+  static var withKeychain: Self {
+    Self()
   }
 }
