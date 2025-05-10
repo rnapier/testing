@@ -1,6 +1,7 @@
 # Project Brief: Keychain
 
 ## Purpose
+
 A Swift package for securely storing sensitive data using iOS/macOS keychain with an in-memory cache layer for performance optimization.
 
 ## Core Requirements

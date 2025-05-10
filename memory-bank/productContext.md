@@ -1,50 +1,69 @@
 # Product Context: Keychain
 
+## Primary Purpose
+
+This package exists as an example project for a blog series about unit testing strategies. It is not production code but rather a teaching aid designed to demonstrate different approaches to testing. The core focus is on showing how to test systems with very limited mocking, or no mocking at all.
+
 ## Problem Statement
 
-Applications frequently need to store sensitive information such as:
-- API keys and tokens
-- User credentials
-- Encryption keys
-- Session identifiers
+The blog series addresses several common testing challenges:
 
-Storing this data securely while maintaining good performance presents challenges:
-1. **Security**: Directly storing sensitive data in UserDefaults or plain files risks exposure
-2. **Performance**: Frequent access to the system Keychain is relatively slow
-3. **Complexity**: The Keychain Services API is C-based and complex to use directly
-4. **Thread Safety**: Concurrent access to shared secure storage requires careful management
+1. **Over-reliance on Mocks**: Many developers default to extensive mocking, which can lead to:
+   - Tests that verify mock behavior rather than actual functionality
+   - Implementation drift between mocks and production code
+   - Brittle tests that break with minor implementation changes
 
-## Solution
+2. **Testing External Dependencies**: How to effectively test code that interacts with system services (like Keychain)
+   - Balancing real implementation testing vs. isolation
+   - Managing the complexity of testing system interactions
 
-The Keychain package solves these problems by:
+3. **Code Design for Testability**: How architecture choices affect testing approaches
+   - The tradeoffs between different design patterns
+   - The impact of dependency injection techniques on test quality
 
-1. **Security Layer**: Leveraging Apple's Keychain Services for secure data persistence
-2. **Performance Layer**: Implementing an in-memory cache to reduce Keychain access operations
-3. **Simplified API**: Providing a clean Swift interface that abstracts away the Keychain complexity
-4. **Thread Safety**: Ensuring thread-safe operations through synchronization mechanisms (Mutex)
+## Solution Approach
 
-## User Experience Goals
+The Keychain package will evolve through multiple implementations to demonstrate testing tradeoffs:
 
-Developers using this package should:
-1. Store and retrieve sensitive data with minimal code
-2. Trust in the security of the stored information
-3. Experience good performance even with frequent data access
-4. Not worry about thread-safety concerns when using the API from multiple threads
+1. **Direct Implementation**: A simple concrete type tested against the real keychain
+   - Shows the challenges of testing against real system services
+   - Demonstrates the benefits of testing real behavior
+
+2. **Closure-Based Mocking**: Using a struct of closures for testing
+   - Illustrates the code overhead of this approach
+   - Shows debugging challenges with closure-heavy code
+   - Demonstrates inconsistency risks in implementation
+   - Reveals how mocks can drift from production code
+
+3. **Protocol-Based Mocking**: Using protocols for abstraction
+   - Shows the code overhead of protocols used only for testing
+   - Demonstrates how mock implementations can drift from production code
+
+4. **Focused Extraction**: Extracting only the difficult-to-test code
+   - Demonstrates how to isolate just the problematic parts
+   - Shows how most code can be tested without mocks
+   - Illustrates a balanced approach to testability
+
+## Educational Goals
+
+Developers following this blog series should learn:
+
+1. The tradeoffs between different testing approaches
+2. How to minimize mocking while maintaining test quality
+3. Techniques for testing code that interacts with system services
+4. How to design code that's testable without excessive abstraction
+5. Practical strategies for balancing real implementation testing with isolation
 
 ## Use Cases
 
-1. **API Authentication**
-   - Store API keys and tokens securely
-   - Retrieve tokens quickly without repeated Keychain access
+1. **Teaching Aid**
+   - Demonstrate testing strategies through concrete examples
+   - Show evolution of code design for improved testability
 
-2. **User Authentication**
-   - Save user credentials securely
-   - Check authentication status efficiently
+2. **Reference Implementation**
+   - Provide working examples of different testing approaches
+   - Allow comparison between approaches
 
-3. **Secure Configuration**
-   - Store application configuration securely
-   - Access configuration values with good performance
-
-4. **Secure Data Caching**
-   - Cache sensitive data in memory for quick access
-   - Persist to Keychain for long-term storage
+3. **Blog Series Support**
+   - Illustrate concepts discussed in the blog
+   - Provide code samples readers can examine and run

@@ -1,32 +1,11 @@
 # System Patterns: Keychain
 
-## Architecture Overview
+## Evolutionary Architecture
 
-### Planned Architecture
-The Keychain package is designed to follow a layered architecture with clear separation of concerns:
+The Keychain package is designed to evolve through multiple architectural patterns to demonstrate different testing approaches. Each architecture represents a stage in the blog series, with its own tradeoffs and testing implications.
 
-```
-┌─────────────────────────────┐
-│     Client Application      │
-└───────────────┬─────────────┘
-                │
-┌───────────────▼─────────────┐
-│     Keychain API Layer      │
-│   (Keychain struct - API)   │
-└───────────────┬─────────────┘
-                │
-┌───────────────▼─────────────┐
-│   Implementation Layer      │
-│ (KeychainEngine - concrete) │
-└───────────────┬─────────────┘
-                │
-┌───────────────▼─────────────┐
-│    System Keychain Layer    │
-└─────────────────────────────┘
-```
-
-### Current Implementation
-The current implementation uses a different architecture with a single class handling both API and implementation:
+### Stage 1: Direct Implementation (Current)
+A simple concrete implementation tested against the real keychain:
 
 ```
 ┌─────────────────────────────┐
@@ -43,63 +22,127 @@ The current implementation uses a different architecture with a single class han
 └─────────────────────────────┘
 ```
 
+**Testing Approach**: Direct testing against the real keychain
+**Pros**: Tests real behavior, no abstraction overhead
+**Cons**: Tests depend on system keychain, potential for flakiness
+
+### Stage 2: Closure-Based Mocking (Planned)
+Using a struct with injected closures for testing:
+
+```
+┌─────────────────────────────┐
+│     Client Application      │
+└───────────────┬─────────────┘
+                │
+┌───────────────▼─────────────┐
+│      Keychain Struct        │
+│     (API + Closures)        │
+└───────────────┬─────────────┘
+                │
+┌───────────────▼─────────────┐
+│ Default Closure Implementation │
+└───────────────┬─────────────┘
+                │
+┌───────────────▼─────────────┐
+│    System Keychain Layer    │
+└─────────────────────────────┘
+```
+
+**Testing Approach**: Inject test closures that don't use real keychain
+**Pros**: Isolated testing, flexible behavior control
+**Cons**: Heavy code overhead, debugging challenges, potential for inconsistent behavior
+
+### Stage 3: Protocol-Based Mocking (Planned)
+Using protocols for abstraction and testing:
+
+```
+┌─────────────────────────────┐
+│     Client Application      │
+└───────────────┬─────────────┘
+                │
+┌───────────────▼─────────────┐
+│     KeychainProtocol        │
+└───────────────┬─────────────┘
+                │
+┌───────────────▼─────────────┐
+│ Concrete Keychain Implementation │
+└───────────────┬─────────────┘
+                │
+┌───────────────▼─────────────┐
+│    System Keychain Layer    │
+└─────────────────────────────┘
+```
+
+**Testing Approach**: Create mock implementations of the protocol
+**Pros**: Clear interface, consistent behavior
+**Cons**: Protocol overhead, potential for implementation drift
+
+### Stage 4: Focused Extraction (Planned)
+Extracting only the difficult-to-test code:
+
+```
+┌─────────────────────────────┐
+│     Client Application      │
+└───────────────┬─────────────┘
+                │
+┌───────────────▼─────────────┐
+│      Keychain Class         │
+│    (Business Logic)         │
+└───────────────┬─────────────┘
+                │
+┌───────────────▼─────────────┐
+│    KeychainStorage Class    │
+│  (System Interaction Only)  │
+└───────────────┬─────────────┘
+                │
+┌───────────────▼─────────────┐
+│    System Keychain Layer    │
+└─────────────────────────────┘
+```
+
+**Testing Approach**: Test business logic with real code, only mock the minimal KeychainStorage
+**Pros**: Most code tested without mocks, minimal abstraction overhead
+**Cons**: Still requires some isolation for the system interaction layer
+
 ## Design Patterns
 
-### 1. Dependency Injection (Planned)
-The planned `Keychain` struct will use dependency injection:
+### 1. Direct Implementation (Current)
+The current implementation uses a single class approach:
+- Combines API and implementation in one class
+- Uses NSLock for thread safety
+- Implements cache-aside pattern for performance
+- Provides subscript-based access for different data types
+
+### 2. Closure-Based Dependency Injection (Planned)
+The planned closure-based implementation will:
 - Accept handler functions in the initializer
-- Delegate actual operations to injected handlers
-- Enable mocking for testing purposes
+- Delegate operations to injected closures
+- Enable behavior customization for testing
+- Demonstrate the overhead and challenges of this approach
 
-### 2. Facade Pattern
-Both planned and current implementations provide a simplified interface to the complex underlying Keychain Services API:
-- Clean, straightforward methods hide implementation complexity
-- Consistent error handling approach
-- Type-safe interactions
+### 3. Protocol-Based Abstraction (Planned)
+The planned protocol-based implementation will:
+- Define a protocol for keychain operations
+- Create concrete and mock implementations
+- Show the overhead of protocol-based abstraction
+- Demonstrate potential for implementation drift
 
-### 3. Cache-Aside Pattern
-Both planned and current implementations use a cache-aside pattern:
-- Check cache first for requested data
-- If not found, query the system Keychain
-- Update cache with retrieved data
-- Subsequent requests served from cache when possible
+### 4. Focused Extraction (Planned)
+The planned extraction-based implementation will:
+- Isolate only the system interaction code
+- Keep business logic in testable, non-mocked code
+- Minimize abstraction overhead
+- Demonstrate a balanced approach to testability
 
-### 4. Thread Synchronization Patterns
+## Thread Safety Patterns
+
 **Current Implementation**:
 - Uses NSLock for direct protection of the dictionary state
 - Manual lock/unlock pattern in methods
 - Combined with concurrent dispatch queue with barriers for writes
 
-**Planned Implementation**:
-- Use Mutex with `.withLock` pattern for thread-safe access
-- Modern Swift API design with better ergonomics
-- Strong type safety through generic parameter
-
-## Component Relationships
-
-### Planned Architecture
-
-1. **External Client → Keychain Struct**
-   - Clients interact with the `Keychain` struct directly
-   - Clean API with minimal complexity
-
-2. **Keychain Struct → KeychainEngine**
-   - `KeychainEngine` is a concrete implementation that can be used with `Keychain`
-   - Provides actual Keychain storage and caching functionality
-
-3. **KeychainEngine → System Keychain**
-   - Uses Security framework to interact with the system Keychain
-   - Handles all low-level Keychain operations
-
-### Current Implementation
-
-1. **External Client → Keychain Class**
-   - Clients interact with the `Keychain` class directly
-   - API includes subscripts for different data types and reset methods
-
-2. **Keychain Class → System Keychain**
-   - Class directly uses Security framework to interact with the system Keychain
-   - Handles both high-level API and low-level operations
+**Future Implementations**:
+Each implementation stage will maintain thread safety but may use different approaches to demonstrate various techniques and their testability.
 
 ## Data Flow
 
@@ -120,5 +163,5 @@ Both planned and current implementations use a cache-aside pattern:
 5. If key doesn't exist, create new Keychain item
 6. Return success/failure to client
 
-### Planned Implementation - Data Flow:
-The planned implementation will maintain similar flows but with clearer separation between the API layer and implementation details.
+### Future Implementations:
+Each implementation stage will maintain similar data flows but with different architectural approaches to demonstrate testing tradeoffs.

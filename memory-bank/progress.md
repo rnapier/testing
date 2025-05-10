@@ -3,61 +3,77 @@
 ## What Works
 
 - ✅ Project structure is set up as a Swift package
-- ✅ `Keychain` class is implemented with:
-  - ✅ Thread-safe cache implementation using NSLock
-  - ✅ iOS Keychain integration for data persistence
-  - ✅ Methods for various data types (String, Data, Bool)
-  - ✅ Subscript-based access for different types
-  - ✅ Reset and hardReset functionality
-  - ✅ Dictionary-based cache for performance
-- ✅ Package.swift updated with required minimum platform versions
+- ✅ Stage 1 (Direct Implementation):
+  - ✅ `Keychain` class is implemented with:
+    - ✅ Thread-safe cache implementation using NSLock
+    - ✅ iOS Keychain integration for data persistence
+    - ✅ Methods for various data types (String, Data, Bool)
+    - ✅ Subscript-based access for different types
+    - ✅ Reset and hardReset functionality
+    - ✅ Dictionary-based cache for performance
+  - ✅ Basic tests implemented against real keychain
+- ✅ Project purpose clarified as a teaching aid for testing strategies
+- ✅ Memory bank updated to reflect educational focus
 
 ## What's Left to Build
 
-- ⬜ Architecture Refactoring:
-  - ⬜ Implement `KeychainEngine` class per system design
-  - ⬜ Create `Keychain` struct with dependency injection
-  - ⬜ Migrate from NSLock to Mutex for thread safety
-  - ⬜ Implement cleaner method-based API
+- ⬜ Stage 1 (Direct Implementation):
+  - ⬜ Additional documentation of current approach
+  - ⬜ Analysis of testing tradeoffs with direct implementation
 
-- ⬜ Testing:
-  - ⬜ Unit tests for both components
-  - ⬜ Concurrency tests for thread safety
-  - ⬜ Integration tests between components
+- ⬜ Stage 2 (Closure-Based Mocking):
+  - ⬜ Refactor to use closure-based dependency injection
+  - ⬜ Implement tests with mock closures
+  - ⬜ Document overhead and challenges of this approach
 
-- ⬜ Documentation:
-  - ⬜ Add code documentation comments
-  - ⬜ Create usage examples
-  - ⬜ Document security best practices
+- ⬜ Stage 3 (Protocol-Based Mocking):
+  - ⬜ Define protocol for keychain operations
+  - ⬜ Implement concrete and mock implementations
+  - ⬜ Document protocol overhead and implementation drift issues
+
+- ⬜ Stage 4 (Focused Extraction):
+  - ⬜ Extract minimal KeychainStorage class for system interaction
+  - ⬜ Keep business logic in testable, non-mocked code
+  - ⬜ Document benefits of minimal mocking approach
+
+- ⬜ Blog Series Content:
+  - ⬜ Document each implementation stage
+  - ⬜ Compare and contrast testing approaches
+  - ⬜ Provide guidance on when each approach is appropriate
 
 ## Current Status
 
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Project Setup | ✅ Complete | Swift Package with basic structure |
-| Original Keychain class | ✅ Complete | Full implementation but not matching planned architecture |
-| Keychain struct (planned) | ⬜ Not Started | Needs to be created to match system design |
-| KeychainEngine class | ⬜ Not Started | Needs to be created to match system design |
-| Tests | ⬜ Not Started | Will be created after implementation |
-| Documentation | ⬜ Not Started | Will be created after implementation |
+| Stage 1: Direct Implementation | ✅ Complete | Concrete class tested against real keychain |
+| Stage 1: Documentation | ⬜ In Progress | Documenting current approach and tradeoffs |
+| Stage 2: Closure-Based Mocking | ⬜ Not Started | Planned next implementation |
+| Stage 3: Protocol-Based Mocking | ⬜ Not Started | Planned future implementation |
+| Stage 4: Focused Extraction | ⬜ Not Started | Planned final implementation |
+| Blog Series Content | ⬜ In Progress | Documenting testing approaches |
 
 ## Known Issues
 
-- Implementation doesn't match planned architecture
-- Using NSLock instead of planned Mutex approach
-- Reset functionality included despite being listed as excluded in requirements
+- None - the current implementation is intentionally designed as Stage 1 of the teaching progression
 
 ## Evolution of Decisions
 
-### Architecture Reality
-- Started with a direct implementation that combines API and implementation
-- Need to refactor to match the planned architecture with separate API and implementation layers
+### Educational Focus
+- Clarified that the project's primary purpose is to demonstrate testing approaches
+- Each implementation stage will intentionally use different architectural patterns
+- The evolution of the code is a feature, not a bug, as it demonstrates different testing tradeoffs
 
-### Thread Safety Approach
-- Current: NSLock with manual lock/unlock
-- Planned: Mutex with .withLock pattern
-- Package.swift updated with platform requirements to support Mutex
+### Testing Approach Evolution
+- Stage 1: Direct testing against real system services
+  - Pros: Tests real behavior, no abstraction overhead
+  - Cons: Tests depend on system keychain, potential for flakiness
 
-### Method Implementation
-- Current: Includes reset() and hardReset() methods
-- Planned: Originally decided to omit these methods, but may need to reconsider
+- Stage 2: Closure-based mocking (planned)
+  - Will demonstrate heavy code overhead and debugging challenges
+
+- Stage 3: Protocol-based mocking (planned)
+  - Will demonstrate protocol overhead and implementation drift issues
+
+- Stage 4: Focused extraction (planned)
+  - Will demonstrate minimal mocking approach with best balance

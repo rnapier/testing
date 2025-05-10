@@ -2,84 +2,91 @@
 
 ## Current Work Focus
 
-We are currently working with two main components:
+We are currently working with a teaching-focused project that demonstrates different testing approaches:
 
-1. **Keychain**: A class (currently being used despite the project plan calling for a struct) that:
+1. **Keychain Implementation (Stage 1)**: A concrete class that:
    - Interfaces directly with Apple's Keychain services
    - Maintains an in-memory cache using a dictionary
    - Uses NSLock for thread safety
    - Has a comprehensive feature set including reset functionality
+   - Is tested directly against the real keychain
 
-2. **Next Implementation Phase**: 
-   - Refactoring to align with the original architecture plan
-   - Converting the current implementation to match the planned architecture
-   - Ensuring proper thread safety with modern approaches (Mutex)
+2. **Blog Series Development**: 
+   - Developing a series of implementations to demonstrate testing tradeoffs
+   - Currently in Stage 1 (direct implementation)
+   - Planning for Stage 2 (closure-based mocking)
+   - Planning for Stage 3 (protocol-based mocking)
+   - Planning for Stage 4 (focused extraction)
 
 ## Recent Changes
 
-1. Examined the current Keychain implementation
-2. Identified discrepancies between current implementation and planned architecture
-3. Updated Package.swift with minimum platform versions for modern API support
+1. Clarified the project's purpose as a teaching aid for testing strategies
+2. Documented the planned evolution through different testing approaches
+3. Updated memory bank to reflect the educational focus of the project
 
 ## Next Steps
 
-1. **Refactoring Plan**:
-   - Implement the `KeychainEngine` class as described in the system patterns
-   - Create the `Keychain` struct that uses dependency injection (different from current class implementation)
-   - Migrate from NSLock to Mutex for thread-safety
-   - Ensure clean separation of concerns between API and implementation layers
+1. **Stage 1 Documentation**:
+   - Document the current direct implementation approach
+   - Highlight the benefits and drawbacks of testing against real system services
+   - Prepare for transition to Stage 2
 
-2. **Testing**:
-   - Create test cases for both the new `KeychainEngine` class and `Keychain` struct
-   - Verify thread-safety with concurrent operations
-   - Test integration between the components
+2. **Stage 2 Planning**:
+   - Design the closure-based mocking implementation
+   - Prepare examples that demonstrate:
+     - The heavy code overhead of this approach
+     - Debugging challenges with closure-heavy code
+     - Inconsistent implementation risks
+     - How mocks can drift from production code
 
-3. **Documentation**:
-   - Add inline documentation to explain the implementation details
-   - Document any security considerations
-   - Update memory bank with implementation decisions
+3. **Testing Strategy**:
+   - Document current testing approach (direct testing)
+   - Plan tests for future implementations
+   - Ensure tests demonstrate the tradeoffs of each approach
 
 ## Active Decisions
 
-1. **Architecture Alignment**: The current implementation differs from our planned architecture:
-   - Current: Single `Keychain` class handling both API and implementation
-   - Planned: `Keychain` struct (API) + `KeychainEngine` class (implementation)
+1. **Educational Focus**: The project's primary purpose is to demonstrate testing approaches:
+   - Architecture will intentionally change multiple times
+   - Each implementation will highlight specific testing tradeoffs
+   - Code clarity is prioritized over production-level optimizations
 
-2. **Thread Safety Evolution**: 
-   - Current: Using NSLock with manual lock/unlock pattern
-   - Planned: Using Mutex with `.withLock` pattern for better safety and ergonomics
+2. **Testing Evolution**: 
+   - Current: Direct testing against the real keychain
+   - Planned: Progress through increasingly sophisticated testing approaches
+   - Goal: Demonstrate the tradeoffs of each approach
 
 3. **Reset Functionality**:
    - Current: Implements both `reset()` and `hardReset()` methods
-   - Planned: Originally decided to omit these methods, but may need to reconsider
+   - These methods are particularly useful for testing cleanup
 
 4. **API Surface**:
    - Current: Uses subscripts extensively for different data types
-   - Planned: Cleaner, more explicit method-based API
+   - Each implementation stage may use different API designs to highlight testing implications
 
 ## Implementation Patterns and Preferences
 
-1. **Swift API Design**:
-   - Public methods should expose a clean, intuitive interface
-   - Implementation details kept private
-   - Prefer explicit methods over subscripts for clarity
+1. **Testing First Design**:
+   - Each implementation is designed to highlight specific testing approaches
+   - Code structure serves the educational purpose of demonstrating testing tradeoffs
 
 2. **Thread Safety Pattern**:
    - Read from cache first, then from Keychain if needed
-   - Protected mutation of shared state using modern synchronization tools
+   - Protected mutation of shared state using synchronization tools
+   - Thread safety is maintained across all implementations
 
 3. **Error Handling**:
    - Current: Mostly silent failures with some print statements
-   - Planned: More consistent approach with proper nil returns or errors
+   - Each implementation may handle errors differently to demonstrate testing implications
 
 ## Learnings and Insights
 
-1. **Implementation Gap**: There is a significant difference between the current implementation and planned architecture.
+1. **Testing Tradeoffs**: The project demonstrates that there's no one-size-fits-all approach to testing.
 
-2. **Mutex Benefits**: Modern `Mutex` type provides better safety guarantees and ergonomics compared to manual NSLock usage.
+2. **Mock Limitations**: The planned implementations will show how mocks can drift from production code, potentially leading to false confidence in tests.
 
 3. **API Design Considerations**: The current implementation's use of subscripts with different generic types creates a convenient but potentially confusing API.
 
 4. **Reset Functionality**: The current implementation's approach to reset functionality (with persisting keys) demonstrates a thoughtful approach to secure data management.
 
-5. **Thread Safety Patterns**: The current implementation uses a concurrent dispatch queue with barriers for write operations, showing another valid approach to thread safety.
+5. **Educational Value**: The project's value lies in its evolution through different approaches, allowing developers to compare and contrast testing strategies.
