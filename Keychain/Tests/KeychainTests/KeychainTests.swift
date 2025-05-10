@@ -56,7 +56,7 @@ func testStringMethodStorageAndRetrieval() async {
 func testDataStorageAndRetrieval() async {
     let keychain = createTestKeychain()
     let key = "testData"
-    let value = "Binary Data".data(using: .utf8)!
+    let value = Data("Binary Data".utf8)
     
     // Store the value
     await keychain.set(data: value, for: key)
@@ -75,7 +75,7 @@ func testDataStorageAndRetrieval() async {
 func testDataMethodStorageAndRetrieval() async {
     let keychain = createTestKeychain()
     let key = "testDataMethod"
-    let value = "Binary Data Method".data(using: .utf8)!
+    let value = Data("Binary Data Method".utf8)
     
     // Store the value using method
     await keychain.set(data: value, for: key)
@@ -176,7 +176,7 @@ func testDeletingDataValues() async {
     let key = "testDeleteData"
     
     // Store a value
-    await keychain.set(data: "Data to Delete".data(using: .utf8), for: key)
+    await keychain.set(data: Data("Data to Delete".utf8), for: key)
     
     // Verify it was stored
     #expect(await keychain.data(for: key) != nil)
@@ -218,12 +218,12 @@ func testMultipleDataTypes() async {
     // Store different data types
     await keychain.set(string: "String Value", for: "stringKey")
     await keychain.set(bool: true, for: "boolKey")
-    await keychain.set(data: "Data Value".data(using: .utf8)!, for: "dataKey")
+    await keychain.set(data: Data("Data Value".utf8), for: "dataKey")
     
     // Verify all values were stored correctly
     #expect(await keychain.string(for: "stringKey") == "String Value")
     #expect(await keychain.bool(for: "boolKey") == true)
-    #expect(await keychain.data(for: "dataKey") == "Data Value".data(using: .utf8)!)
+    #expect(await keychain.data(for: "dataKey") == Data("Data Value".utf8))
     
     // Clean up
     await keychain.reset()

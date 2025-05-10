@@ -29,7 +29,7 @@ actor Keychain {
             // Additional cleanup for keychain specific entries
             let query: [CFString: Any] = [
                 kSecAttrService: kSecAttrGeneric,
-                kSecAttrGeneric: keychainID.data(using: .utf8)!,
+                kSecAttrGeneric: Data(keychainID.utf8),
                 kSecClass: kSecClassGenericPassword
             ]
             _ = SecItemDelete(query as CFDictionary)
@@ -48,7 +48,7 @@ extension Keychain {
     }
     
     func set(string: String?, for key: String) async {
-        await set(data: string?.data(using: .utf8), for: key)
+        await set(data: string != nil ? Data(string!.utf8) : nil, for: key)
     }
 }
 
@@ -158,7 +158,7 @@ extension Keychain {
     nonisolated func keychainDictionary(for id: String) -> [CFString: Any] {
         [
             kSecAttrService: id,
-            kSecAttrGeneric: keychainID.data(using: .utf8)!,
+            kSecAttrGeneric: Data(keychainID.utf8),
             kSecClass: kSecClassGenericPassword
         ]
     }
