@@ -1,46 +1,20 @@
-//
-//  CustomKeychain.swift
-//
-//
-//  Created by Rogers, Maximilian on 8/19/21.
-//
-
 import Foundation
 
 /// The internal implementation of the Keychain struct, it maps to a particular keychain identifier.
 /// As an actor, it provides built-in synchronization to ensure thread safety when accessing the keychain.
 /// It maintains an in-memory cache to aid in speeding up reads.
-/// The persisting keys are used to ensure that certain important keys such as the HardwareID in the case of the AudibleUI keychain are not reset when all other values are expected to be wiped.
 actor Keychain {
 
-    init(keychainID: String, queueLabel: String, persistingKeys: [String] = []) {
+    init(keychainID: String) {
         self.keychainID = keychainID
-        self.queueLabel = queueLabel
-        self.persistingKeys = persistingKeys
     }
     let keychainID: String
-    let queueLabel: String
-    let persistingKeys: [String]
     
     var cache = [String: Data]()
 
     // MARK: - Reset Methods
     
     func reset() async {
-        // Grab the keys that should persist across resets.
-        // For example with AudibleUI Keychain
-        // the Hardware ID, Device ID & Activation Data will persist as they should never change.
-
-        // Create a dictionary to store important keys
-        var cacheImportantKeys = [String: Data]()
-        
-        // Collect data for persisting keys
-        for key in persistingKeys {
-            if let data = await data(for: key) {
-                cacheImportantKeys[key] = data
-            }
-        }
-
         // clear in-memory caches
         cache = [:]
 
@@ -51,31 +25,17 @@ actor Keychain {
             try await deleteAllKeys(for: kSecClassCertificate)
             try await deleteAllKeys(for: kSecClassKey)
             try await deleteAllKeys(for: kSecClassIdentity)
+            
+            // Additional cleanup for keychain specific entries
+            let query: [CFString: Any] = [
+                kSecAttrService: kSecAttrGeneric,
+                kSecAttrGeneric: keychainID.data(using: .utf8)!,
+                kSecClass: kSecClassGenericPassword
+            ]
+            _ = SecItemDelete(query as CFDictionary)
         } catch {
             // TODO log error
             print("Error Reseting Keychain! \(error)")
-        }
-
-        // reload back important keys that should survive a reset
-        for (key, value) in cacheImportantKeys {
-            await set(data: value, for: key)
-        }
-    }
-
-    func hardReset() async {
-        // clear in-memory caches
-        cache = [:]
-
-        // clear entries on disk
-        do {
-            try await deleteAllKeys(for: kSecClassGenericPassword)
-            try await deleteAllKeys(for: kSecClassInternetPassword)
-            try await deleteAllKeys(for: kSecClassCertificate)
-            try await deleteAllKeys(for: kSecClassKey)
-            try await deleteAllKeys(for: kSecClassIdentity)
-        } catch {
-            // TODO log error
-            print("Error Hard Reseting Keychain! \(error)")
         }
     }
 }

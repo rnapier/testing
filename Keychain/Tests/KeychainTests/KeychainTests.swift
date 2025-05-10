@@ -5,12 +5,10 @@ import Foundation
 // MARK: - Test Helpers
 
 /// Creates a test keychain with a unique ID to avoid interfering with real data
-func createTestKeychain(persistingKeys: [String] = []) -> Keychain {
+func createTestKeychain() -> Keychain {
     let uuid = UUID().uuidString
     return Keychain(
-        keychainID: "com.test.keychain.\(uuid)",
-        queueLabel: "com.test.keychain.queue.\(uuid)",
-        persistingKeys: persistingKeys
+        keychainID: "com.test.keychain.\(uuid)"
     )
 }
 
@@ -32,7 +30,7 @@ func testStringStorageAndRetrieval() async {
     #expect(retrieved == value)
     
     // Clean up
-    await keychain.hardReset()
+    await keychain.reset()
 }
 
 @Test
@@ -51,7 +49,7 @@ func testStringMethodStorageAndRetrieval() async {
     #expect(retrieved == value)
     
     // Clean up
-    await keychain.hardReset()
+    await keychain.reset()
 }
 
 @Test
@@ -70,7 +68,7 @@ func testDataStorageAndRetrieval() async {
     #expect(retrieved == value)
     
     // Clean up
-    await keychain.hardReset()
+    await keychain.reset()
 }
 
 @Test
@@ -89,7 +87,7 @@ func testDataMethodStorageAndRetrieval() async {
     #expect(retrieved == value)
     
     // Clean up
-    await keychain.hardReset()
+    await keychain.reset()
 }
 
 @Test
@@ -108,7 +106,7 @@ func testBoolStorageAndRetrieval() async {
     #expect(retrieved == value)
     
     // Clean up
-    await keychain.hardReset()
+    await keychain.reset()
 }
 
 @Test
@@ -127,7 +125,7 @@ func testBoolMethodStorageAndRetrieval() async {
     #expect(retrieved == value)
     
     // Clean up
-    await keychain.hardReset()
+    await keychain.reset()
 }
 
 @Test
@@ -148,7 +146,7 @@ func testOverwritingValues() async {
     #expect(retrieved == "New Value")
     
     // Clean up
-    await keychain.hardReset()
+    await keychain.reset()
 }
 
 @Test
@@ -169,7 +167,7 @@ func testDeletingValues() async {
     #expect(await keychain.string(for: key) == nil)
     
     // Clean up
-    await keychain.hardReset()
+    await keychain.reset()
 }
 
 @Test
@@ -190,56 +188,27 @@ func testDeletingDataValues() async {
     #expect(await keychain.data(for: key) == nil)
     
     // Clean up
-    await keychain.hardReset()
+    await keychain.reset()
 }
 
 // MARK: - Reset Functionality Tests
 
 @Test
-func testResetWithPersistingKeys() async {
-    let persistingKey = "persistingKey"
-    let regularKey = "regularKey"
-    let keychain = createTestKeychain(persistingKeys: [persistingKey])
+func testReset() async {
+    let keychain = createTestKeychain()
+    let key = "testKey"
     
-    // Store values
-    await keychain.set(string: "Persistent Value", for: persistingKey)
-    await keychain.set(string: "Regular Value", for: regularKey)
+    // Store a value
+    await keychain.set(string: "Test Value", for: key)
     
-    // Verify both values were stored
-    #expect(await keychain.string(for: persistingKey) == "Persistent Value")
-    #expect(await keychain.string(for: regularKey) == "Regular Value")
+    // Verify it was stored
+    #expect(await keychain.string(for: key) == "Test Value")
     
     // Reset the keychain
     await keychain.reset()
     
-    // Verify persisting key survived but regular key was deleted
-    #expect(await keychain.string(for: persistingKey) == "Persistent Value")
-    #expect(await keychain.string(for: regularKey) == nil)
-    
-    // Clean up
-    await keychain.hardReset()
-}
-
-@Test
-func testHardReset() async {
-    let persistingKey = "persistingKey"
-    let regularKey = "regularKey"
-    let keychain = createTestKeychain(persistingKeys: [persistingKey])
-    
-    // Store values
-    await keychain.set(string: "Persistent Value", for: persistingKey)
-    await keychain.set(string: "Regular Value", for: regularKey)
-    
-    // Verify both values were stored
-    #expect(await keychain.string(for: persistingKey) == "Persistent Value")
-    #expect(await keychain.string(for: regularKey) == "Regular Value")
-    
-    // Hard reset the keychain
-    await keychain.hardReset()
-    
-    // Verify both keys were deleted
-    #expect(await keychain.string(for: persistingKey) == nil)
-    #expect(await keychain.string(for: regularKey) == nil)
+    // Verify the key was deleted
+    #expect(await keychain.string(for: key) == nil)
 }
 
 @Test
@@ -257,7 +226,7 @@ func testMultipleDataTypes() async {
     #expect(await keychain.data(for: "dataKey") == "Data Value".data(using: .utf8)!)
     
     // Clean up
-    await keychain.hardReset()
+    await keychain.reset()
 }
 
 @Test
@@ -277,5 +246,5 @@ func testCacheConsistency() async {
     #expect(firstRead == "Cached Value")
     
     // Clean up
-    await keychain.hardReset()
+    await keychain.reset()
 }
