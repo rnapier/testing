@@ -1,132 +1,292 @@
+//
+//  CustomKeychain.swift
+//
+//
+//  Created by Rogers, Maximilian on 8/19/21.
+//
+
 import Foundation
 
-public struct Keychain: Sendable {
-    
-    init(
-        dataForKey: @escaping @Sendable (_ key: String) -> Data?,
-        stringForKey: @escaping @Sendable (_ key: String) -> String?,
-        boolForKey: @escaping @Sendable (_ key: String) -> Bool?,
-        setDataForKey: @escaping @Sendable (_ value: Data?, _ key: String) -> Void,
-        setStringForKey: @escaping @Sendable (_ value: String?, _ key: String) -> Void,
-        setBoolForKey: @escaping @Sendable (_ value: Bool?, _ key: String) -> Void,
-        resetMethod: @escaping @Sendable () -> Void,
-        hardResetMethod: @escaping @Sendable () -> Void
-    ) {
-        self.dataForKey = dataForKey
-        self.stringForKey = stringForKey
-        self.boolForKey = boolForKey
-        self.setDataForKey = setDataForKey
-        self.setStringForKey = setStringForKey
-        self.setBoolForKey = setBoolForKey
-        self.resetMethod = resetMethod
-        self.hardResetMethod = hardResetMethod
-    }
+/// The internal implementation of the Keychain struct, it maps to a particular keychain identiifier.
+/// With an internal concurrent queue with write barriers will ensure that unexpected values changes can be avoided but still allowing for fast efficient reads from the keychain repository.
+/// In addition to the concurrent queue, there is an in-memory cache to aid in speeding up reads
+/// The persisting keys are used to ensure that certain important keys such as the HardwareID in the case of the AudibleUI keychain are not reset when all other values are expected to be wiped.
+final class Keychain {
 
-    init(_ keychain: some KeychainEngine) {
-        self.dataForKey = keychain.data(for:)
-        self.stringForKey = keychain.string(for:)
-        self.boolForKey = keychain.bool(for:)
-        self.setDataForKey = keychain.set(data:for:)
-        self.setStringForKey = keychain.set(string:for:)
-        self.setBoolForKey = keychain.set(bool:for:)
-        self.resetMethod = keychain.reset
-        self.hardResetMethod = keychain.hardReset
+    init(keychainID: String, queueLabel: String, persistingKeys: [String] = []) {
+        self.keychainID = keychainID
+        self.queueLabel = queueLabel
+        self.persistingKeys = persistingKeys
     }
+    let keychainID: String
+    let queueLabel: String
+    let persistingKeys: [String]
 
-    /// Creating a Keychain with the internal implementation. The underlying mechanisms will rely upon a concurrent queue with write barriers and an in-memory cache to speed up reads but ensure that writes are processed similar to a serial queue and lock any in-parallel reads until the write is complete. Ensuring the flow of data behaves as expected.
-    ///
-    /// - Parameters:
-    ///   - keychainID: Identifier of the Keychain
-    ///   - queueLabel: Identifier for the internal Queue
-    ///   - persistingKeys: A series of Keys that should persist a keychain reset. Empty by default
-    public init(keychainID: String, persistingKeys: [String] = []) {
-        self.init(
-            _Keychain(
-                keychainID: keychainID,
-                persistingKeys: persistingKeys
-            )
+    lazy var concurrentQueue = {
+        DispatchQueue(
+            label: queueLabel,
+            attributes: .concurrent
         )
-    }
+    }()
+    var cache = [String: Data]()
+    let dataLock = NSLock()
 
-    private var dataForKey: @Sendable (_ key: String) -> Data?
-    private var stringForKey: @Sendable (_ key: String) -> String?
-    private var boolForKey: @Sendable  (_ key: String) -> Bool?
-    private var setDataForKey: @Sendable (_ value: Data?, _ key: String) -> Void
-    private var setStringForKey: @Sendable (_ value: String?, _ key: String) -> Void
-    private var setBoolForKey: @Sendable (_ value: Bool?, _ key: String) -> Void
-    private var resetMethod: @Sendable () -> Void
-    private var hardResetMethod: @Sendable () -> Void
-
-    public func data(for key: String) -> Data? {
-        dataForKey(key)
-    }
-
-    public func string(for key: String) -> String? {
-        stringForKey(key)
-    }
-    
-    public func bool(for key: String) -> Bool? {
-        boolForKey(key)
-    }
-
-    public func set(data: Data?, for key: String) {
-        setDataForKey(data, key)
-    }
-
-    public func set(string: String?, for key: String) {
-        setStringForKey(string, key)
-    }
-    
-    public func set(bool: Bool?, for key: String) {
-        setBoolForKey(bool, key)
-    }
-
-    // or could utilize subscripts
-    public subscript(key: String) -> String? {
+    subscript(key: String) -> String? {
         get { string(for: key) }
         set { set(string: newValue, for: key) }
     }
-    public subscript(key: String) -> Data? {
+
+    subscript(key: String) -> Data? {
         get { data(for: key) }
         set { set(data: newValue, for: key) }
     }
-    public subscript(key: String) -> Bool? {
+
+    subscript(key: String) -> Bool? {
         get { bool(for: key) }
         set { set(bool: newValue, for: key) }
     }
 
-    public func reset() {
-        resetMethod()
+    func reset() {
+        // Grab the keys that should presist across resets.
+        // For example with AudibleUI Keychain
+        // the Hardware ID, Device ID & Activation Data will persist as they should never change.
+
+        let cacheImportantKeys = persistingKeys
+            .reduce(into: [String: Data]()) { result, key in
+                result[key] = data(for: key)
+            }
+
+        // clear in-memory caches
+        dataLock.lock()
+        cache = [:]
+        dataLock.unlock()
+
+        // clear entries on disk
+        do {
+            try deleteAllKeys(for: kSecClassGenericPassword)
+            try deleteAllKeys(for: kSecClassInternetPassword)
+            try deleteAllKeys(for: kSecClassCertificate)
+            try deleteAllKeys(for: kSecClassKey)
+            try deleteAllKeys(for: kSecClassIdentity)
+        } catch {
+            // TODO log error
+            print("Error Reseting Keychain! \(error)")
+        }
+
+        // reload back important keys that should survive a reset
+        cacheImportantKeys.forEach {
+            set(data: $0.value, for: $0.key)
+        }
     }
 
-    public func hardReset() {
-        hardResetMethod()
-    }
+    func hardReset() {
+        // clear in-memory caches
+        dataLock.lock()
+        cache = [:]
+        dataLock.unlock()
 
-    public func remove(key: String) {
-        set(data: nil, for: key)
+        // clear entries on disk
+        do {
+            try deleteAllKeys(for: kSecClassGenericPassword)
+            try deleteAllKeys(for: kSecClassInternetPassword)
+            try deleteAllKeys(for: kSecClassCertificate)
+            try deleteAllKeys(for: kSecClassKey)
+            try deleteAllKeys(for: kSecClassIdentity)
+        } catch {
+            // TODO log error
+            print("Error Hard Reseting Keychain! \(error)")
+        }
     }
 }
 
-public protocol KeychainEngine: Sendable {
-    @Sendable func data(for key: String) -> Data?
-    @Sendable func string(for key: String) -> String?
-    @Sendable func bool(for key: String) -> Bool?
-    @Sendable func set(data: Data?, for key: String)
-    @Sendable func set(string: String?, for key: String)
-    @Sendable func set(bool: Bool?, for key: String)
-    
-    /// Resets the keychain.
-    ///
-    /// This method removes all keys and values from the keychain except for ABHardwareIdentifier, ABDeviceIdentifier and ABDeviceActivationDataIdentifier, which are never intended to be changed.
-    @Sendable func reset()
-
-    /// This method removes all keys and values from the keychain! Including ABHardwareIdentifier, ABDeviceIdentifier and ABDeviceActivationDataIdentifier, which are never intended to be changed. Please be careful when using... this is probably not the reset you're looking for. 
-    @Sendable func hardReset()
+// MARK: - String Methods
+extension Keychain {
+    func string(for key: String) -> String? {
+        guard let data = data(for: key) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+    func set(string: String?, for key: String) {
+        set(data: string?.data(using: .utf8), for: key)
+    }
 }
 
-extension KeychainEngine {
-    func eraseToKeychain() -> Keychain {
-        Keychain(self)
+// MARK: - Bool Methods
+extension Keychain {
+    func bool(for key: String) -> Bool? {
+        guard let data = data(for: key) else { return nil }
+        do {
+            return try JSONDecoder().decode(Bool.self, from: data)
+        } catch {
+            return nil
+        }
     }
+
+    func set(bool: Bool?, for key: String) {
+        guard let bool = bool else {
+            set(data: nil, for: key)
+            return
+        }
+        do {
+            let data = try JSONEncoder().encode(bool)
+            set(data: data, for: key)
+        } catch {
+            set(data: nil, for: key)
+        }
+    }
+}
+
+// MARK: - Data Methods
+extension Keychain {
+    func data(for key: String) -> Data? {
+        var data: Data? = nil
+        concurrentQueue.sync {
+            // check in-memory cache
+            if let _data = checkCache(for: key) {
+                data = _data
+                return
+            }
+            // check disk - keychain
+            // setup keychain params
+            var params = keychainDictionary(for: key)
+            params[kSecMatchLimit] = kSecMatchLimitOne
+            params[kSecReturnData] = kCFBooleanTrue
+            var result: CFTypeRef?
+            let status = SecItemCopyMatching(
+                params as CFDictionary,
+                &result
+            )
+            guard status != errSecItemNotFound else {
+                // LOG ERROR
+                // throw KeychainError.noPassword
+                return
+            }
+
+            // TODO: Noticed that in unit tests we encounter this issue
+            // https://stackoverflow.com/questions/22082996/testing-the-keychain-osstatus-error-34018
+            // Jira tiket created to find a workaround
+            // https://jira.audible.com/browse/IOS-15895
+            guard status == errSecSuccess else {
+                // LOG ERROR
+                // throw KeychainError.unhandledError(status: status)
+                return
+            }
+            data = result as? Data
+            // update cache
+            cache(data: data, for: key)
+        }
+        return data
+    }
+
+    func set(data: Data?, for key: String) {
+        // check disk - keychain
+        concurrentQueue.sync(flags: .barrier) {
+            // update in-memory cache
+            cache(data: data, for: key)
+
+            // prep query
+            var params = keychainDictionary(for: key)
+            let query: () -> OSStatus = {
+                // if nil, then delete instead of update
+                if data == nil {
+                    return SecItemDelete(params as CFDictionary)
+                } else {
+                    // first lets attempt to update the entry
+                    return SecItemUpdate(
+                        params as CFDictionary,
+                        [
+                            kSecValueData: data
+                        ] as CFDictionary
+                    )
+                }
+            }
+
+            var status = query()
+            if status == errSecItemNotFound && data != nil {
+                // if the item was not found and we aren't deleting, lets create the entry
+                params[kSecAttrAccessible] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+                params[kSecValueData] = data
+                status = SecItemAdd(params as CFDictionary, nil)
+            }
+            guard status != errSecSuccess else {
+                // TODO LOG ERROR
+                // throw KeychainError.unhandledError(status: status)
+                return
+            }
+        }
+    }
+}
+
+// MARK: - Caching
+extension Keychain {
+    func cache(data: Data?, for key: String) {
+        dataLock.lock()
+        defer {
+            dataLock.unlock()
+        }
+        cache[key] = data
+    }
+
+    func checkCache(for key: String) -> Data? {
+        dataLock.lock()
+        defer {
+            dataLock.unlock()
+        }
+        return cache[key]
+    }
+}
+// MARK: - Keychain CF Helper Methods
+extension Keychain {
+    func keychainDictionary(for id: String) -> [CFString: Any] {
+        [
+            kSecAttrService: id,
+            kSecAttrGeneric: keychainID.data(using: .utf8)!,
+            kSecClass: kSecClassGenericPassword
+        ]
+    }
+}
+
+// MARK: - Reset Helpers
+extension Keychain {
+    func hardResetAllKeychains() {
+        for secClass in [kSecClassGenericPassword, kSecClassInternetPassword, kSecClassCertificate, kSecClassKey, kSecClassIdentity] {
+            var params = [kSecClass: secClass]
+
+#if os(macOS)
+            params[kSecMatchLimit] = kSecMatchLimitAll
+#endif
+            let status = SecItemDelete(params as CFDictionary)
+
+#if !os(macOS)
+            if status != errSecSuccess && status != errSecItemNotFound {
+                log.error("Error deleting keys of class \(secClass): \(status)")
+            }
+#endif
+        }
+    }
+}
+
+extension Keychain {
+    func deleteAllKeys(for secClass: CFString) throws {
+        var error: (any Error)? = nil
+        concurrentQueue.sync(flags: .barrier) {
+            // delete
+            let status = SecItemDelete([
+                kSecClass: secClass
+            ] as CFDictionary)
+            // check for errors
+            guard
+                status == errSecSuccess || status == errSecItemNotFound
+            else {
+                error = KeychainError.unhandledError(status: status)
+                return
+            }
+        }
+        if let error = error {
+            throw error
+        }
+    }
+}
+public enum KeychainError: Error {
+    case noPassword
+    case unhandledError(status: OSStatus)
 }

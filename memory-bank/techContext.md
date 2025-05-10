@@ -6,16 +6,29 @@
 - **Swift**: Primary programming language (Swift 6.1)
 - **Swift Package Manager**: Dependency management and project structure
 - **Keychain Services API**: Apple's secure storage mechanism
-- **Synchronization Framework**: For thread safety mechanisms
+- **Synchronization Mechanisms**: For thread safety (NSLock currently, Mutex planned)
 
 ### Frameworks & Libraries
 - **Foundation**: Core functionality and data types
-- **Security**: For Keychain Services API access
-- **Synchronization**: For Mutex and thread-safety tools
+- **Security**: For Keychain Services API access (CFDictionary, SecItemXXX methods)
+- **Dispatch**: For concurrent queue with barriers in current implementation
+- **Synchronization**: For Mutex in planned implementation
 
 ## Development Setup
 
-### Project Structure
+### Current Project Structure
+```
+Keychain/
+├── Package.swift             # Package definition with platform requirements
+├── Sources/
+│   └── Keychain/             # Main module
+│       └── Keychain.swift    # Combined API interface + implementation class
+└── Tests/
+    └── KeychainTests/        # Test cases
+        └── KeychainTests.swift
+```
+
+### Planned Project Structure
 ```
 Keychain/
 ├── Package.swift             # Package definition
@@ -31,6 +44,7 @@ Keychain/
 ### Build Requirements
 - Swift 6.1+
 - iOS 18.0+, macOS 15.0+, tvOS 18.0+, watchOS 11.0+
+- These higher minimum versions are required for Mutex support
 
 ## Technical Constraints
 
@@ -40,9 +54,10 @@ Keychain/
 - Must respect memory limitations on all targeted platforms
 
 ### Security Constraints
-- No sensitive data should be logged
+- No sensitive data should be logged (current implementation has some print statements for errors)
 - Cached data lives only in memory, not persisted outside Keychain
 - Implementation must follow Apple's security best practices
+- Persisting keys mechanism allows certain critical values to survive reset operations
 
 ## Dependencies
 
@@ -51,7 +66,8 @@ Keychain/
 
 ### System Dependencies
 - Security.framework (Keychain Services)
-- Synchronization.framework (Thread safety)
+- Foundation.framework (NSLock, DispatchQueue)
+- Synchronization.framework (Mutex for planned implementation)
 
 ## Technical Decisions
 
@@ -60,9 +76,15 @@ Keychain/
 - Simple to implement and maintain
 - Efficient for typical use cases with string keys
 
-### Mutex for Thread Safety
-- `Mutex` used for:
-  - Direct protection of the dictionary state
+### Thread Safety Implementation
+**Current**:
+- NSLock for protecting the dictionary state
+- Concurrent dispatch queue with barriers for write operations
+- Manual lock/unlock pattern requiring careful paired usage
+
+**Planned**:
+- `Mutex` for:
+  - Direct protection of the dictionary state  
   - Modern Swift API design with `.withLock` pattern
   - Thread-safe access with improved ergonomics
   - Strong type safety through generic parameter
@@ -73,8 +95,12 @@ Keychain/
   - Avoid additional dependencies
   - Ensure optimal performance
 
-### Reset Methods Omission
-- `reset()` and `hardReset()` methods not implemented in `KeychainEngine`
-  - Provides better security boundaries
-  - Prevents accidental data loss
-  - Limits scope of responsibility
+### Reset Methods
+**Current**:
+- Both `reset()` and `hardReset()` methods are implemented
+- `reset()` preserves specified "persisting keys" during reset
+- `hardReset()` clears all data without preserving anything
+
+**Planned**:
+- Original plan was to omit these methods from the `KeychainEngine` class
+- May need to reconsider based on existing implementation providing this functionality
