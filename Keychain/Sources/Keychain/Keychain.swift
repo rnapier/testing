@@ -245,26 +245,6 @@ extension Keychain {
     }
 }
 
-// MARK: - Reset Helpers
-extension Keychain {
-    func hardResetAllKeychains() {
-        for secClass in [kSecClassGenericPassword, kSecClassInternetPassword, kSecClassCertificate, kSecClassKey, kSecClassIdentity] {
-            var params = [kSecClass: secClass]
-
-#if os(macOS)
-            params[kSecMatchLimit] = kSecMatchLimitAll
-#endif
-            let status = SecItemDelete(params as CFDictionary)
-
-#if !os(macOS)
-            if status != errSecSuccess && status != errSecItemNotFound {
-                log.error("Error deleting keys of class \(secClass): \(status)")
-            }
-#endif
-        }
-    }
-}
-
 extension Keychain {
     func deleteAllKeys(for secClass: CFString) throws {
         var error: (any Error)? = nil
