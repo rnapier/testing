@@ -1,17 +1,13 @@
 import Foundation
 
 public actor Keychain {
-  struct Error: Swift.Error {
-    var status: OSStatus
+  enum Error: Swift.Error {
+    case keychain(OSStatus)
+    case invalidType
   }
 
   public init(keychainID: String) {
     self.keychainID = keychainID
-  }
-
-  // Test helper to directly add values to cache for testing
-  public func addToTestCache(value: Data?, for key: String) {
-    cache[key] = value
   }
 
   public let keychainID: String
@@ -21,17 +17,15 @@ public actor Keychain {
   public func reset() throws {
     cache = [:]
 
-    var query: [CFString: Any] = [
-      kSecAttrGeneric: Data(keychainID.utf8),
-      kSecClass: kSecClassGenericPassword,
-    ]
+    var query = keychainDictionary(for: nil)
 #if os(macOS)
     query[kSecMatchLimit] = kSecMatchLimitAll
 #endif
 
     let status = SecItemDelete(query as CFDictionary)
-    if status != errSecSuccess && status != errSecItemNotFound {
-      throw Error(status: status)
+
+    guard status == errSecSuccess || status == errSecItemNotFound else {
+      throw Error.keychain(status)
     }
   }
 
@@ -46,11 +40,7 @@ public actor Keychain {
 
   public func bool(for key: String) throws -> Bool? {
     guard let data = try data(for: key) else { return nil }
-    do {
-      return try JSONDecoder().decode(Bool.self, from: data)
-    } catch {
-      return nil
-    }
+    return try JSONDecoder().decode(Bool.self, from: data)
   }
 
   public func set(bool: Bool?, for key: String) throws {
@@ -58,12 +48,8 @@ public actor Keychain {
       try set(data: nil, for: key)
       return
     }
-    do {
-      let data = try JSONEncoder().encode(bool)
-      try set(data: data, for: key)
-    } catch {
-      try set(data: nil, for: key)
-    }
+    let data = try JSONEncoder().encode(bool)
+    try set(data: data, for: key)
   }
 
   public func data(for key: String) throws -> Data? {
@@ -85,11 +71,10 @@ public actor Keychain {
     }
 
     guard status == errSecSuccess else {
-      throw Error(status: status)
+      throw Error.keychain(status)
     }
 
     let data = result as? Data
-
     cache[key] = data
     return data
   }
@@ -120,15 +105,18 @@ public actor Keychain {
       status = SecItemAdd(params as CFDictionary, nil)
     }
     guard status == errSecSuccess else {
-      throw Error(status: status)
+      throw Error.keychain(status)
     }
   }
 
-  private func keychainDictionary(for id: String) -> [CFString: Any] {
-    [
-      kSecAttrService: id,
+  private func keychainDictionary(for id: String?) -> [CFString: Any] {
+    var query: [CFString: Any] = [
       kSecAttrGeneric: Data(keychainID.utf8),
       kSecClass: kSecClassGenericPassword,
     ]
+    if let id {
+      query[kSecAttrService] = id
+    }
+    return query
   }
 }
