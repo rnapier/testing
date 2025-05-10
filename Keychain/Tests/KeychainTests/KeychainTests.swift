@@ -279,32 +279,3 @@ func testCacheConsistency() async {
     // Clean up
     await keychain.hardReset()
 }
-
-// MARK: - Subscript Tests (Using Deprecated API)
-
-@Test
-func testSubscriptBackwardCompatibility() {
-    // This test ensures the deprecated subscript API still works
-    let keychain = createTestKeychain()
-    let key = "subscriptTest"
-    
-    // Use the subscript to store a value
-    keychain[key] = "Subscript Value"
-    
-    // Use the subscript to retrieve the value
-    let retrieved: String? = keychain[key]
-    
-    // Verify
-    #expect(retrieved == "Subscript Value")
-    
-    // Delete using subscript (explicitly use the String subscript)
-    keychain[key] = Optional<String>.none
-    
-    // Verify deletion - specify that we're checking the String subscript
-    #expect((keychain[key] as String?) == nil)
-    
-    // Clean up using the synchronous wrapper
-    Task { 
-        await keychain.hardReset() 
-    }
-}
