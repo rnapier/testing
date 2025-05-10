@@ -23,6 +23,9 @@ We are currently working with a teaching-focused project that demonstrates diffe
 1. Clarified the project's purpose as a teaching aid for testing strategies
 2. Documented the planned evolution through different testing approaches
 3. Updated memory bank to reflect the educational focus of the project
+4. Modified all test methods to be marked as `throws` and added `try` to all keychain calls
+   - This change ensures tests acknowledge potential errors from the Keychain API
+   - The tests will still fail when run on macOS, but the error handling is now properly structured
 
 ## Next Steps
 

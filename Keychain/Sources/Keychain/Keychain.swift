@@ -1,51 +1,51 @@
 import Foundation
-import OSLog
 
 public actor Keychain {
+  struct Error: Swift.Error {
+    var status: OSStatus
+  }
 
   public init(keychainID: String) {
     self.keychainID = keychainID
   }
 
-  public let keychainID: String
+  // Test helper to directly add values to cache for testing
+  public func addToTestCache(value: Data?, for key: String) {
+    cache[key] = value
+  }
 
-  private let log = Logger(subsystem: "Keychain", category: "Keychain")
+  public let keychainID: String
 
   private var cache: [String: Data] = [:]
 
-  public func reset() {
+  public func reset() throws {
     cache = [:]
 
-    // clear entries on disk
-    deleteAllKeys(for: kSecClassGenericPassword)
-    deleteAllKeys(for: kSecClassInternetPassword)
-    deleteAllKeys(for: kSecClassCertificate)
-    deleteAllKeys(for: kSecClassKey)
-    deleteAllKeys(for: kSecClassIdentity)
-
-    // Additional cleanup for keychain specific entries
-    let query: [CFString: Any] = [
-      kSecAttrService: kSecAttrGeneric,
+    var query: [CFString: Any] = [
       kSecAttrGeneric: Data(keychainID.utf8),
       kSecClass: kSecClassGenericPassword,
     ]
+#if os(macOS)
+    query[kSecMatchLimit] = kSecMatchLimitAll
+#endif
+
     let status = SecItemDelete(query as CFDictionary)
-    if status != errSecSuccess {
-      log.error("Error deleting keychain specific entries: \(status)")
+    if status != errSecSuccess && status != errSecItemNotFound {
+      throw Error(status: status)
     }
   }
 
-  public func string(for key: String) -> String? {
-    guard let data = data(for: key) else { return nil }
+  public func string(for key: String) throws -> String? {
+    guard let data = try data(for: key) else { return nil }
     return String(data: data, encoding: .utf8)
   }
 
-  public func set(string: String?, for key: String) {
-    set(data: string != nil ? Data(string!.utf8) : nil, for: key)
+  public func set(string: String?, for key: String) throws {
+    try set(data: string.map { Data($0.utf8) }, for: key)
   }
 
-  public func bool(for key: String) -> Bool? {
-    guard let data = data(for: key) else { return nil }
+  public func bool(for key: String) throws -> Bool? {
+    guard let data = try data(for: key) else { return nil }
     do {
       return try JSONDecoder().decode(Bool.self, from: data)
     } catch {
@@ -53,20 +53,20 @@ public actor Keychain {
     }
   }
 
-  public func set(bool: Bool?, for key: String) {
+  public func set(bool: Bool?, for key: String) throws {
     guard let bool = bool else {
-      set(data: nil, for: key)
+      try set(data: nil, for: key)
       return
     }
     do {
       let data = try JSONEncoder().encode(bool)
-      set(data: data, for: key)
+      try set(data: data, for: key)
     } catch {
-      set(data: nil, for: key)
+      try set(data: nil, for: key)
     }
   }
 
-  public func data(for key: String) -> Data? {
+  public func data(for key: String) throws -> Data? {
     if let data = cache[key] {
       return data
     }
@@ -85,8 +85,7 @@ public actor Keychain {
     }
 
     guard status == errSecSuccess else {
-      log.error("Error reading keychain: \(status)")
-      return nil
+      throw Error(status: status)
     }
 
     let data = result as? Data
@@ -95,7 +94,7 @@ public actor Keychain {
     return data
   }
 
-  public func set(data: Data?, for key: String) {
+  public func set(data: Data?, for key: String) throws {
     cache[key] = data
 
     var params = keychainDictionary(for: key)
@@ -120,9 +119,8 @@ public actor Keychain {
       params[kSecValueData] = data
       status = SecItemAdd(params as CFDictionary, nil)
     }
-    guard status != errSecSuccess else {
-      log.error("Could not write data for key \(key): \(status)")
-      return
+    guard status == errSecSuccess else {
+      throw Error(status: status)
     }
   }
 
@@ -132,18 +130,5 @@ public actor Keychain {
       kSecAttrGeneric: Data(keychainID.utf8),
       kSecClass: kSecClassGenericPassword,
     ]
-  }
-
-  private func deleteAllKeys(for secClass: CFString) {
-    // delete
-    let status = SecItemDelete(
-      [
-        kSecClass: secClass
-      ] as CFDictionary)
-
-    // check for errors
-    if status != errSecSuccess && status != errSecItemNotFound {
-      log.error("Error resetting \(secClass): \(status)")
-    }
   }
 }
