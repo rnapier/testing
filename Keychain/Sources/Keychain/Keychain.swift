@@ -43,12 +43,7 @@ public actor Keychain {
     return data
   }
 
-  public func set(data: Data?, for key: String) throws {
-    guard let data else {
-      try removeData(for: key)
-      return
-    }
-
+  public func set(data: Data, for key: String) throws {
     cache[key] = data
 
     var params = keychainDictionary(for: key)
@@ -56,13 +51,10 @@ public actor Keychain {
     // Attempt to update the entry
     var status = SecItemUpdate(
       params as CFDictionary,
-      [
-        kSecValueData: data
-      ] as CFDictionary
-    )
+      [kSecValueData: data] as CFDictionary)
 
     // If it doesn't exist, try adding it
-    if status == errSecItemNotFound  {
+    if status == errSecItemNotFound {
       params[kSecAttrAccessible] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
       params[kSecValueData] = data
       status = SecItemAdd(params as CFDictionary, nil)
@@ -77,7 +69,7 @@ public actor Keychain {
     cache[key] = nil
 
     let params = keychainDictionary(for: key)
-    let status =  SecItemDelete(params as CFDictionary)
+    let status = SecItemDelete(params as CFDictionary)
 
     guard status == errSecSuccess || status == errSecItemNotFound else {
       throw Error.keychain(status)
@@ -92,8 +84,8 @@ public actor Keychain {
     return String(data: data, encoding: .utf8)
   }
 
-  public func set(string: String?, for key: String) throws {
-    try set(data: string.map { Data($0.utf8) }, for: key)
+  public func set(string: String, for key: String) throws {
+    try set(data: Data(string.utf8), for: key)
   }
 
   //
@@ -106,11 +98,8 @@ public actor Keychain {
     return try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
   }
 
-  public func set(value: Any?, for key: String) throws {
-    let data = try value.map {
-      try JSONSerialization.data(withJSONObject: $0, options: [.fragmentsAllowed])
-    }
-
+  public func set(value: Any, for key: String) throws {
+    let data = try JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed])
     try set(data: data, for: key)
   }
 
@@ -121,9 +110,9 @@ public actor Keychain {
     cache = [:]
 
     var query = keychainDictionary(for: nil)
-#if os(macOS)
-    query[kSecMatchLimit] = kSecMatchLimitAll
-#endif
+    #if os(macOS)
+      query[kSecMatchLimit] = kSecMatchLimitAll
+    #endif
 
     let status = SecItemDelete(query as CFDictionary)
 
@@ -142,7 +131,7 @@ extension Keychain {
     try value(for: key) as? Bool
   }
 
-  public func set(bool: Bool?, for key: String) throws {
+  public func set(bool: Bool, for key: String) throws {
     try set(value: bool, for: key)
   }
 
@@ -150,7 +139,7 @@ extension Keychain {
     try value(for: key) as? Int
   }
 
-  public func set(int: Int?, for key: String) throws {
+  public func set(int: Int, for key: String) throws {
     try set(value: int, for: key)
   }
 }
@@ -158,7 +147,7 @@ extension Keychain {
 //
 // MARK: - Private Helpers
 //
-private extension Keychain {
+extension Keychain {
   private func keychainDictionary(for id: String?) -> [CFString: Any] {
     var query: [CFString: Any] = [
       kSecAttrGeneric: Data(keychainID.utf8),

@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import Keychain
 
 @Suite class KeychainTests {
@@ -143,9 +144,12 @@ import Foundation
     try await keychain.set(data: isAdminData, for: "\(key).isAdmin")
 
     // Retrieve individual values
-    let retrievedName = try await JSONDecoder().decode(String.self, from: keychain.data(for: "\(key).name") ?? Data())
-    let retrievedAge = try await JSONDecoder().decode(Int.self, from: keychain.data(for: "\(key).age") ?? Data())
-    let retrievedIsAdmin = try await JSONDecoder().decode(Bool.self, from: keychain.data(for: "\(key).isAdmin") ?? Data())
+    let retrievedName = try await JSONDecoder().decode(
+      String.self, from: keychain.data(for: "\(key).name") ?? Data())
+    let retrievedAge = try await JSONDecoder().decode(
+      Int.self, from: keychain.data(for: "\(key).age") ?? Data())
+    let retrievedIsAdmin = try await JSONDecoder().decode(
+      Bool.self, from: keychain.data(for: "\(key).isAdmin") ?? Data())
 
     // Verify each component
     #expect(retrievedName == name)
@@ -202,8 +206,8 @@ import Foundation
     // Verify it was stored
     #expect(try await keychain.string(for: key) != nil)
 
-    // Delete by setting nil
-    try await keychain.set(string: nil, for: key)
+    // Delete
+    try await keychain.removeData(for: key)
 
     // Verify it was deleted
     #expect(try await keychain.string(for: key) == nil)
@@ -220,7 +224,7 @@ import Foundation
     #expect(try await keychain.data(for: key) != nil)
 
     // Delete by setting nil
-    try await keychain.set(data: nil, for: key)
+    try await keychain.removeData(for: key)
 
     // Verify it was deleted
     #expect(try await keychain.data(for: key) == nil)
@@ -282,12 +286,13 @@ extension Keychain {
 }
 
 struct KeychainTrait: TestTrait, TestScoping {
-  var isRecursive: Bool { true }
 
-  func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
+  func provideScope(
+    for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void
+  ) async throws {
 
     let keychain = Keychain(keychainID: "test.keychain.\(UUID())")
-    
+
     try await Keychain.$current.withValue(keychain) {
 
       var error: Error? = nil
