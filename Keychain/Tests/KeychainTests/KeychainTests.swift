@@ -291,7 +291,7 @@ struct KeychainTrait: TestTrait, TestScoping {
     for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void
   ) async throws {
 
-    let keychain = Keychain(keychainID: "test.keychain.\(UUID())")
+    let keychain = Keychain(id: "test.keychain.\(UUID())")
 
     try await Keychain.$current.withValue(keychain) {
 

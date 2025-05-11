@@ -5,11 +5,11 @@ public actor Keychain {
     case keychain(OSStatus)
   }
 
-  public init(keychainID: String) {
-    self.keychainID = keychainID
+  public init(id: String) {
+    self.id = id
   }
 
-  public let keychainID: String
+  public let id: String
 
   private var cache: [String: Data] = [:]
 
@@ -27,8 +27,7 @@ public actor Keychain {
     var result: CFTypeRef?
     let status = SecItemCopyMatching(
       params as CFDictionary,
-      &result
-    )
+      &result)
 
     if status == errSecItemNotFound {
       return nil
@@ -148,13 +147,13 @@ extension Keychain {
 // MARK: - Private Helpers
 //
 extension Keychain {
-  private func keychainDictionary(for id: String?) -> [CFString: Any] {
+  private func keychainDictionary(for key: String?) -> [CFString: Any] {
     var query: [CFString: Any] = [
-      kSecAttrGeneric: Data(keychainID.utf8),
+      kSecAttrGeneric: Data(self.id.utf8),
       kSecClass: kSecClassGenericPassword,
     ]
-    if let id {
-      query[kSecAttrService] = id
+    if let key {
+      query[kSecAttrService] = key
     }
     return query
   }
