@@ -96,6 +96,86 @@ import Foundation
   }
 
   @Test(.withKeychain)
+  func testIntStorageAndRetrieval() async throws {
+    let key = "testInt"
+    let value = 42
+
+    // Store the value
+    try await keychain.set(int: value, for: key)
+
+    // Retrieve the value
+    let retrieved = try await keychain.int(for: key)
+
+    // Verify
+    #expect(retrieved == value)
+  }
+
+  @Test(.withKeychain)
+  func testIntMethodStorageAndRetrieval() async throws {
+    let key = "testIntMethod"
+    let value = 12345
+
+    // Store the value using method
+    try await keychain.set(int: value, for: key)
+
+    // Retrieve the value using method
+    let retrieved = try await keychain.int(for: key)
+
+    // Verify
+    #expect(retrieved == value)
+  }
+
+  @Test(.withKeychain)
+  func testGenericValueStorageAndRetrieval() async throws {
+    let key = "testGenericValue"
+    let name = "Test User"
+    let age = 30
+    let isAdmin = true
+
+    // Create dictionary data using individual components
+    let nameData = try JSONEncoder().encode(name)
+    let ageData = try JSONEncoder().encode(age)
+    let isAdminData = try JSONEncoder().encode(isAdmin)
+
+    // Store individual components
+    try await keychain.set(data: nameData, for: "\(key).name")
+    try await keychain.set(data: ageData, for: "\(key).age")
+    try await keychain.set(data: isAdminData, for: "\(key).isAdmin")
+
+    // Retrieve individual values
+    let retrievedName = try await JSONDecoder().decode(String.self, from: keychain.data(for: "\(key).name") ?? Data())
+    let retrievedAge = try await JSONDecoder().decode(Int.self, from: keychain.data(for: "\(key).age") ?? Data())
+    let retrievedIsAdmin = try await JSONDecoder().decode(Bool.self, from: keychain.data(for: "\(key).isAdmin") ?? Data())
+
+    // Verify each component
+    #expect(retrievedName == name)
+    #expect(retrievedAge == age)
+    #expect(retrievedIsAdmin == isAdmin)
+  }
+
+  @Test(.withKeychain)
+  func testArrayStorageAndRetrieval() async throws {
+    let key = "testArrayValue"
+    let fruits = ["Apple", "Banana", "Orange"]
+
+    // Encode array to data
+    let fruitData = try JSONEncoder().encode(fruits)
+
+    // Store data
+    try await keychain.set(data: fruitData, for: key)
+
+    // Retrieve and decode
+    let retrievedData = try await keychain.data(for: key)
+    let retrievedFruits = try JSONDecoder().decode([String].self, from: retrievedData ?? Data())
+
+    // Verify array contents
+    #expect(retrievedFruits.count == 3)
+    #expect(retrievedFruits[0] == "Apple")
+    #expect(retrievedFruits[1] == "Banana")
+    #expect(retrievedFruits[2] == "Orange")
+  }
+
+  @Test(.withKeychain)
   func testOverwritingValues() async throws {
     let key = "testOverwrite"
 
@@ -171,11 +251,13 @@ import Foundation
     try await keychain.set(string: "String Value", for: "stringKey")
     try await keychain.set(bool: true, for: "boolKey")
     try await keychain.set(data: Data("Data Value".utf8), for: "dataKey")
+    try await keychain.set(int: 123, for: "intKey")
 
     // Verify all values were stored correctly
     #expect(try await keychain.string(for: "stringKey") == "String Value")
     #expect(try await keychain.bool(for: "boolKey") == true)
     #expect(try await keychain.data(for: "dataKey") == Data("Data Value".utf8))
+    #expect(try await keychain.int(for: "intKey") == 123)
   }
 
   @Test(.withKeychain)
@@ -205,7 +287,7 @@ struct KeychainTrait: TestTrait, TestScoping {
   func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
 
     let keychain = Keychain(keychainID: "test.keychain.\(UUID())")
-
+    
     try await Keychain.$current.withValue(keychain) {
 
       var error: Error? = nil

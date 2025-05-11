@@ -3,7 +3,6 @@ import Foundation
 public actor Keychain {
   enum Error: Swift.Error {
     case keychain(OSStatus)
-    case invalidType
   }
 
   public init(keychainID: String) {
@@ -38,18 +37,18 @@ public actor Keychain {
     try set(data: string.map { Data($0.utf8) }, for: key)
   }
 
-  public func bool(for key: String) throws -> Bool? {
+  public func value(for key: String) throws -> Any? {
     guard let data = try data(for: key) else { return nil }
-    return try JSONDecoder().decode(Bool.self, from: data)
+    return try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
   }
 
-  public func set(bool: Bool?, for key: String) throws {
-    guard let bool = bool else {
+  public func set(value: Any?, for key: String) throws {
+    guard let value else {
       try set(data: nil, for: key)
       return
     }
-    let data = try JSONEncoder().encode(bool)
-    try set(data: data, for: key)
+
+    try set(data: JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]), for: key)
   }
 
   public func data(for key: String) throws -> Data? {
@@ -118,5 +117,24 @@ public actor Keychain {
       query[kSecAttrService] = id
     }
     return query
+  }
+}
+
+// Helpers
+extension Keychain {
+  public func bool(for key: String) throws -> Bool? {
+    try value(for: key) as? Bool
+  }
+
+  public func set(bool: Bool?, for key: String) throws {
+    try set(value: bool, for: key)
+  }
+
+  public func int(for key: String) throws -> Int? {
+    try value(for: key) as? Int
+  }
+
+  public func set(int: Int?, for key: String) throws {
+    try set(value: int, for: key)
   }
 }
